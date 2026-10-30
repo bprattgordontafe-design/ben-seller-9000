@@ -57,7 +57,6 @@
       color: var(--neon-yellow);
     }
 
-    /* Viewport Frame */
     .viewport-container {
       position: relative;
       width: 100%;
@@ -79,7 +78,6 @@
       object-fit: cover;
     }
 
-    /* Overlays */
     .countdown-overlay {
       position: absolute;
       inset: 0;
@@ -120,7 +118,6 @@
       to { transform: scale(1.05); }
     }
 
-    /* Thumbnail Strip */
     .thumbs-strip {
       display: flex;
       gap: 8px;
@@ -149,7 +146,6 @@
       object-fit: cover;
     }
 
-    /* Controls Area */
     .controls {
       margin-bottom: 12px;
       display: flex;
@@ -157,7 +153,6 @@
       width: 100%;
     }
 
-    /* Big Arcade Push Button */
     .arcade-btn {
       width: 110px;
       height: 110px;
@@ -192,7 +187,6 @@
       opacity: 0.6;
     }
 
-    /* Modal / Rename Screen */
     .modal-screen {
       position: fixed;
       inset: 0;
@@ -272,7 +266,6 @@
       transform: scale(0.98);
     }
 
-    /* Reset Banner */
     .reset-banner {
       display: none;
       margin-top: 15px;
@@ -292,14 +285,12 @@
   <div class="viewport-container">
     <video id="webcam" autoplay playsinline muted></video>
     
-    <!-- 2-Second Delay Overlay -->
     <div class="countdown-overlay" id="countdownOverlay">
       <div class="countdown-number" id="countdownNum">2</div>
       <div class="countdown-label">GET READY...</div>
     </div>
   </div>
 
-  <!-- Preview thumbnails -->
   <div class="thumbs-strip">
     <div class="thumb-slot" id="slot-0"></div>
     <div class="thumb-slot" id="slot-1"></div>
@@ -311,7 +302,6 @@
     <button class="arcade-btn" id="snapBtn">SNAP</button>
   </div>
 
-  <!-- Rename / Save Screen -->
   <div class="modal-screen" id="saveModal">
     <div class="modal-card">
       <h2>BATCH COMPLETE!</h2>
@@ -327,10 +317,20 @@
     </div>
   </div>
 
-  <!-- Hidden canvas for rendering image grabs -->
   <canvas id="captureCanvas" style="display:none;"></canvas>
 
   <script>
+    // Load your custom 4 sound files
+    const sound1 = new Audio('sound1.mp3'); // Click button
+    const sound2 = new Audio('sound2.mp3'); // Countdown tick
+    const sound3 = new Audio('sound3.mp3'); // Photo snap
+    const sound4 = new Audio('sound4.mp3'); // Success / batch done
+
+    function playSound(snd) {
+      snd.currentTime = 0; // Rewind so rapid taps restart cleanly
+      snd.play().catch(err => console.log("Audio waiting for user gesture"));
+    }
+
     const webcam = document.getElementById('webcam');
     const snapBtn = document.getElementById('snapBtn');
     const counterBadge = document.getElementById('counterBadge');
@@ -346,7 +346,6 @@
     let capturedPhotos = [];
     let isCountingDown = false;
 
-    // 1. Initialize Camera Stream
     async function initCamera() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -361,13 +360,12 @@
 
     initCamera();
 
-    // 2. Handle Arcade Button Click
     snapBtn.addEventListener('click', () => {
       if (isCountingDown || capturedPhotos.length >= 4) return;
+      playSound(sound1); // Plays sound1.mp3 on click
       startPhotoCountdown();
     });
 
-    // 3. 2-Second Countdown Before Each Photo
     function startPhotoCountdown() {
       isCountingDown = true;
       snapBtn.disabled = true;
@@ -375,11 +373,13 @@
       
       let timeLeft = 2;
       countdownNum.textContent = timeLeft;
+      playSound(sound2); // Plays sound2.mp3 on tick start
 
       const timer = setInterval(() => {
         timeLeft--;
         if (timeLeft > 0) {
           countdownNum.textContent = timeLeft;
+          playSound(sound2);
         } else {
           clearInterval(timer);
           takePhoto();
@@ -390,8 +390,8 @@
       }, 1000);
     }
 
-    // 4. Capture Canvas Snap
     function takePhoto() {
+      playSound(sound3); // Plays sound3.mp3 when photo snaps
       canvas.width = webcam.videoWidth || 1280;
       canvas.height = webcam.videoHeight || 720;
       const ctx = canvas.getContext('2d');
@@ -400,35 +400,32 @@
       const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
       capturedPhotos.push(dataUrl);
 
-      // Render thumbnail
       const currentIdx = capturedPhotos.length - 1;
       const slot = document.getElementById(`slot-${currentIdx}`);
       slot.innerHTML = `<img src="${dataUrl}" />`;
 
-      // Update badge or show finish modal
       if (capturedPhotos.length < 4) {
         counterBadge.textContent = `READY FOR PHOTO ${capturedPhotos.length + 1} OF 4`;
       } else {
         counterBadge.textContent = `ALL 4 PHOTOS CAPTURED!`;
+        playSound(sound4); // Plays sound4.mp3 when all 4 are done
         setTimeout(openSaveModal, 400);
       }
     }
 
-    // 5. Transition to Folder Rename Screen
     function openSaveModal() {
       saveModal.classList.add('active');
       folderNameInput.value = '';
       folderNameInput.focus();
     }
 
-    // 6. Save & Package Zip
     saveFolderBtn.addEventListener('click', async () => {
+      playSound(sound1);
       const folderName = folderNameInput.value.trim() || `item_batch_${Date.now()}`;
       
       saveFolderBtn.disabled = true;
       folderNameInput.disabled = true;
 
-      // Zip the 4 photos into a folder
       const zip = new JSZip();
       const folder = zip.folder(folderName);
 
@@ -440,7 +437,6 @@
       const content = await zip.generateAsync({ type: "blob" });
       saveAs(content, `${folderName}.zip`);
 
-      // 7. Start 3-second reset countdown to clear screen
       startResetCountdown();
     });
 
@@ -460,7 +456,6 @@
       }, 1000);
     }
 
-    // 8. Full Reset back to initial state
     function resetApp() {
       capturedPhotos = [];
       for (let i = 0; i < 4; i++) {
