@@ -321,13 +321,15 @@
 
   <script>
     // Load your custom 4 sound files
-    const sound1 = new Audio('sound1.mp3'); // Click button
-    const sound2 = new Audio('sound2.mp3'); // Countdown tick
-    const sound3 = new Audio('sound3.mp3'); // Photo snap
-    const sound4 = new Audio('sound4.mp3'); // Success / batch done
+    const sound1 = new Audio('sound1.mp3'); 
+    const sound2 = new Audio('sound2.mp3'); 
+    const sound3 = new Audio('sound3.mp3'); 
+    const sound4 = new Audio('sound4.mp3'); 
 
+    // Strict play function that stops any overlap and restarts instantly
     function playSound(snd) {
-      snd.currentTime = 0; // Rewind so rapid taps restart cleanly
+      snd.pause();
+      snd.currentTime = 0;
       snd.play().catch(err => console.log("Audio waiting for user gesture"));
     }
 
@@ -362,7 +364,7 @@
 
     snapBtn.addEventListener('click', () => {
       if (isCountingDown || capturedPhotos.length >= 4) return;
-      playSound(sound1); // Plays sound1.mp3 on click
+      playSound(sound1); // sound1.mp3 on click
       startPhotoCountdown();
     });
 
@@ -373,7 +375,7 @@
       
       let timeLeft = 2;
       countdownNum.textContent = timeLeft;
-      playSound(sound2); // Plays sound2.mp3 on tick start
+      playSound(sound2); // sound2.mp3 on tick start
 
       const timer = setInterval(() => {
         timeLeft--;
@@ -391,7 +393,7 @@
     }
 
     function takePhoto() {
-      playSound(sound3); // Plays sound3.mp3 when photo snaps
+      playSound(sound3); // sound3.mp3 when photo snaps
       canvas.width = webcam.videoWidth || 1280;
       canvas.height = webcam.videoHeight || 720;
       const ctx = canvas.getContext('2d');
@@ -408,7 +410,7 @@
         counterBadge.textContent = `READY FOR PHOTO ${capturedPhotos.length + 1} OF 4`;
       } else {
         counterBadge.textContent = `ALL 4 PHOTOS CAPTURED!`;
-        playSound(sound4); // Plays sound4.mp3 when all 4 are done
+        playSound(sound4); // sound4.mp3 when all 4 are done
         setTimeout(openSaveModal, 400);
       }
     }
