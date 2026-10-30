@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Ben Seller 9000 - Intake App</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+  <style>
+    :root {
+      --bg: #121212;
+      --panel: #1e1e24;
+      --neon-yellow: #ffea00;
+      --neon-red: #ff2a6d;
+      --neon-cyan: #05d9e8;
+      --text: #ffffff;
+    }
+
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px;
+      overflow: hidden;
+    }
+
+    header {
+      text-align: center;
+      margin-top: 10px;
+    }
+
+    header h1 {
+      font-size: 1.4rem;
+      letter-spacing: 2px;
+      color: var(--neon-cyan);
+      text-transform: uppercase;
+      text-shadow: 0 0 8px rgba(5, 217, 232, 0.6);
+    }
+
+    .counter-badge {
+      margin-top: 6px;
+      font-size: 1.1rem;
+      font-weight: bold;
+      color: var(--neon-yellow);
+    }
+
+    /* Viewport Frame */
+    .viewport-container {
+      position: relative;
+      width: 100%;
+      max-width: 420px;
+      height: 52vh;
+      background: #000;
+      border: 4px solid var(--panel);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 0 20px rgba(0,0,0,0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    /* Overlays */
+    .countdown-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.65);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+
+    .countdown-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .countdown-number {
+      font-size: 6rem;
+      font-weight: 900;
+      color: var(--neon-yellow);
+      text-shadow: 0 0 20px var(--neon-yellow);
+      animation: pulse 0.5s infinite alternate;
+    }
+
+    .countdown-label {
+      font-size: 1.2rem;
+      letter-spacing: 1px;
+      color: #fff;
+      margin-top: 10px;
+      text-transform: uppercase;
+    }
+
+    @keyframes pulse {
+      from { transform: scale(0.95); }
+      to { transform: scale(1.05); }
+    }
+
+    /* Thumbnail Strip */
+    .thumbs-strip {
+      display: flex;
+      gap: 8px;
+      width: 100%;
+      max-width: 420px;
+      justify-content: center;
+      height: 60px;
+      margin: 10px 0;
+    }
+
+    .thumb-slot {
+      width: 60px;
+      height: 60px;
+      border: 2px dashed #444;
+      border-radius: 8px;
+      overflow: hidden;
+      background: #181818;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .thumb-slot img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    /* Controls Area */
+    .controls {
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: center;
+      width: 100%;
+    }
+
+    /* Big Arcade Push Button */
+    .arcade-btn {
+      width: 110px;
+      height: 110px;
+      border-radius: 50%;
+      border: none;
+      background: radial-gradient(circle, #ff5e93 0%, #ff2a6d 70%, #990033 100%);
+      box-shadow: 0 8px 0 #660022, 0 12px 20px rgba(255, 42, 109, 0.4);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-weight: 900;
+      font-size: 1.1rem;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+      transition: all 0.1s ease;
+      outline: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .arcade-btn:active {
+      transform: translateY(6px);
+      box-shadow: 0 2px 0 #660022, 0 4px 10px rgba(255, 42, 109, 0.4);
+    }
+
+    .arcade-btn:disabled {
+      background: #444;
+      box-shadow: 0 6px 0 #222;
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+
+    /* Modal / Rename Screen */
+    .modal-screen {
+      position: fixed;
+      inset: 0;
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      z-index: 100;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+
+    .modal-screen.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-card {
+      background: var(--panel);
+      width: 100%;
+      max-width: 380px;
+      padding: 24px;
+      border-radius: 16px;
+      border: 2px solid var(--neon-cyan);
+      box-shadow: 0 0 25px rgba(5, 217, 232, 0.2);
+      text-align: center;
+    }
+
+    .modal-card h2 {
+      font-size: 1.3rem;
+      color: var(--neon-cyan);
+      margin-bottom: 12px;
+      text-transform: uppercase;
+    }
+
+    .modal-card p {
+      font-size: 0.9rem;
+      color: #ccc;
+      margin-bottom: 20px;
+    }
+
+    .input-field {
+      width: 100%;
+      padding: 14px;
+      font-size: 1.1rem;
+      border-radius: 8px;
+      border: 2px solid #333;
+      background: #121212;
+      color: #fff;
+      outline: none;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .input-field:focus {
+      border-color: var(--neon-yellow);
+    }
+
+    .save-btn {
+      width: 100%;
+      padding: 14px;
+      font-size: 1.1rem;
+      font-weight: bold;
+      border: none;
+      border-radius: 8px;
+      background: var(--neon-yellow);
+      color: #000;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .save-btn:active {
+      transform: scale(0.98);
+    }
+
+    /* Reset Banner */
+    .reset-banner {
+      display: none;
+      margin-top: 15px;
+      font-size: 1.1rem;
+      font-weight: bold;
+      color: var(--neon-yellow);
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>BEN SELLER 9000</h1>
+    <div class="counter-badge" id="counterBadge">READY FOR PHOTO 1 OF 4</div>
+  </header>
+
+  <div class="viewport-container">
+    <video id="webcam" autoplay playsinline muted></video>
+    
+    <!-- 2-Second Delay Overlay -->
+    <div class="countdown-overlay" id="countdownOverlay">
+      <div class="countdown-number" id="countdownNum">2</div>
+      <div class="countdown-label">GET READY...</div>
+    </div>
+  </div>
+
+  <!-- Preview thumbnails -->
+  <div class="thumbs-strip">
+    <div class="thumb-slot" id="slot-0"></div>
+    <div class="thumb-slot" id="slot-1"></div>
+    <div class="thumb-slot" id="slot-2"></div>
+    <div class="thumb-slot" id="slot-3"></div>
+  </div>
+
+  <div class="controls">
+    <button class="arcade-btn" id="snapBtn">SNAP</button>
+  </div>
+
+  <!-- Rename / Save Screen -->
+  <div class="modal-screen" id="saveModal">
+    <div class="modal-card">
+      <h2>BATCH COMPLETE!</h2>
+      <p>Name this item folder to package your 4 photos:</p>
+      
+      <input type="text" id="folderNameInput" class="input-field" placeholder="e.g. victa_mower_blue" autocomplete="off" />
+      
+      <button class="save-btn" id="saveFolderBtn">SAVE FOLDER</button>
+      
+      <div class="reset-banner" id="resetBanner">
+        SAVED! RESETTING IN <span id="resetCount">3</span>...
+      </div>
+    </div>
+  </div>
+
+  <!-- Hidden canvas for rendering image grabs -->
+  <canvas id="captureCanvas" style="display:none;"></canvas>
+
+  <script>
+    const webcam = document.getElementById('webcam');
+    const snapBtn = document.getElementById('snapBtn');
+    const counterBadge = document.getElementById('counterBadge');
+    const countdownOverlay = document.getElementById('countdownOverlay');
+    const countdownNum = document.getElementById('countdownNum');
+    const saveModal = document.getElementById('saveModal');
+    const folderNameInput = document.getElementById('folderNameInput');
+    const saveFolderBtn = document.getElementById('saveFolderBtn');
+    const resetBanner = document.getElementById('resetBanner');
+    const resetCount = document.getElementById('resetCount');
+    const canvas = document.getElementById('captureCanvas');
+
+    let capturedPhotos = [];
+    let isCountingDown = false;
+
+    // 1. Initialize Camera Stream
+    async function initCamera() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+          audio: false
+        });
+        webcam.srcObject = stream;
+      } catch (err) {
+        alert("Camera error or permission denied: " + err.message);
+      }
+    }
+
+    initCamera();
+
+    // 2. Handle Arcade Button Click
+    snapBtn.addEventListener('click', () => {
+      if (isCountingDown || capturedPhotos.length >= 4) return;
+      startPhotoCountdown();
+    });
+
+    // 3. 2-Second Countdown Before Each Photo
+    function startPhotoCountdown() {
+      isCountingDown = true;
+      snapBtn.disabled = true;
+      countdownOverlay.classList.add('active');
+      
+      let timeLeft = 2;
+      countdownNum.textContent = timeLeft;
+
+      const timer = setInterval(() => {
+        timeLeft--;
+        if (timeLeft > 0) {
+          countdownNum.textContent = timeLeft;
+        } else {
+          clearInterval(timer);
+          takePhoto();
+          countdownOverlay.classList.remove('active');
+          isCountingDown = false;
+          snapBtn.disabled = false;
+        }
+      }, 1000);
+    }
+
+    // 4. Capture Canvas Snap
+    function takePhoto() {
+      canvas.width = webcam.videoWidth || 1280;
+      canvas.height = webcam.videoHeight || 720;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(webcam, 0, 0, canvas.width, canvas.height);
+
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+      capturedPhotos.push(dataUrl);
+
+      // Render thumbnail
+      const currentIdx = capturedPhotos.length - 1;
+      const slot = document.getElementById(`slot-${currentIdx}`);
+      slot.innerHTML = `<img src="${dataUrl}" />`;
+
+      // Update badge or show finish modal
+      if (capturedPhotos.length < 4) {
+        counterBadge.textContent = `READY FOR PHOTO ${capturedPhotos.length + 1} OF 4`;
+      } else {
+        counterBadge.textContent = `ALL 4 PHOTOS CAPTURED!`;
+        setTimeout(openSaveModal, 400);
+      }
+    }
+
+    // 5. Transition to Folder Rename Screen
+    function openSaveModal() {
+      saveModal.classList.add('active');
+      folderNameInput.value = '';
+      folderNameInput.focus();
+    }
+
+    // 6. Save & Package Zip
+    saveFolderBtn.addEventListener('click', async () => {
+      const folderName = folderNameInput.value.trim() || `item_batch_${Date.now()}`;
+      
+      saveFolderBtn.disabled = true;
+      folderNameInput.disabled = true;
+
+      // Zip the 4 photos into a folder
+      const zip = new JSZip();
+      const folder = zip.folder(folderName);
+
+      capturedPhotos.forEach((dataUrl, idx) => {
+        const base64Data = dataUrl.replace(/^data:image\/jpeg;base64,/, "");
+        folder.file(`photo_${idx + 1}.jpg`, base64Data, { base64: true });
+      });
+
+      const content = await zip.generateAsync({ type: "blob" });
+      saveAs(content, `${folderName}.zip`);
+
+      // 7. Start 3-second reset countdown to clear screen
+      startResetCountdown();
+    });
+
+    function startResetCountdown() {
+      resetBanner.style.display = 'block';
+      let resetTime = 3;
+      resetCount.textContent = resetTime;
+
+      const resetTimer = setInterval(() => {
+        resetTime--;
+        if (resetTime > 0) {
+          resetCount.textContent = resetTime;
+        } else {
+          clearInterval(resetTimer);
+          resetApp();
+        }
+      }, 1000);
+    }
+
+    // 8. Full Reset back to initial state
+    function resetApp() {
+      capturedPhotos = [];
+      for (let i = 0; i < 4; i++) {
+        document.getElementById(`slot-${i}`).innerHTML = '';
+      }
+      
+      saveModal.classList.remove('active');
+      resetBanner.style.display = 'none';
+      saveFolderBtn.disabled = false;
+      folderNameInput.disabled = false;
+      snapBtn.disabled = false;
+      counterBadge.textContent = `READY FOR PHOTO 1 OF 4`;
+    }
+  </script>
+</body>
+</html>
